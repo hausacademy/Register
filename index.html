@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ลงทะเบียนรับแจ้งเตือนคลาสเรียน · HAUS Academy</title>
+
+<!--
+  HAUS - ฟอร์มลงทะเบียนรับแจ้งเตือนคลาสเรียน
+  ==========================================
+  เปิดในไลน์เท่านั้น (LIFF) เพราะต้องขอ userId จากไลน์
+  หน้านี้ไม่เก็บข้อมูลอะไรไว้เอง ส่งต่อให้ Apps Script ทั้งหมด
+
+  ตั้งค่า 2 บรรทัดก่อนใช้จริง: LIFF_ID กับ ENDPOINT
+
+  เปิดในเบราว์เซอร์ธรรมดา = โหมดพรีวิว ใช้ข้อมูลปลอม ไม่ส่งอะไรจริง
+-->
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+:root{
+  --yellow:#FFD317; --black:#1A1A1A; --grey:#888; --line:#E6E6E6;
+  --ok:#00A651; --err:#DD4124; --bg:#F5F5F5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--black);
+  font-family:'Prompt','Helvetica Neue',Arial,sans-serif;font-size:16px;line-height:1.6}
+.wrap{max-width:480px;margin:0 auto;background:#fff;min-height:100vh}
+header{background:var(--yellow);padding:28px 24px 22px;text-align:center}
+header img{width:96px;display:block;margin:0 auto 12px}
+header h1{margin:0;font-size:18px;font-weight:700;line-height:1.35}
+header h1.th{font-size:14px;font-weight:500;opacity:.8}
+header p{margin:6px 0 0;font-size:13px;font-weight:600;opacity:1}
+header p.th{margin-top:1px;font-weight:500;opacity:.8}
+
+/* บรรทัดภาษาไทย - เล็กกว่าอังกฤษหนึ่งขั้น อ่านคู่กันได้ไม่แย่งกันเด่น */
+.th{font-weight:400;opacity:.72;font-size:.86em}
+label .th{display:inline-block;font-weight:400}
+.role .th{display:block;font-size:12.5px;margin-top:-2px}
+main{padding:24px}
+label{display:block;font-weight:600;font-size:14px;margin-bottom:8px}
+.hint{font-size:13px;color:var(--grey);margin:0 0 18px}
+.hint.alert{color:var(--err);font-weight:500}
+.hint.alert .th{opacity:.85}
+input[type=text]{width:100%;padding:16px;font-size:22px;letter-spacing:3px;
+  text-align:center;border:2px solid var(--line);border-radius:10px;
+  font-family:inherit;text-transform:uppercase}
+input[type=text]:focus{outline:none;border-color:var(--yellow)}
+.roles{display:grid;gap:10px;margin:8px 0 24px}
+.role{display:flex;align-items:center;gap:12px;padding:14px 16px;
+  border:2px solid var(--line);border-radius:10px;cursor:pointer}
+.role input{accent-color:var(--black);width:20px;height:20px}
+.role.on{border-color:var(--black);background:#FFFDF2}
+button{width:100%;padding:16px;font-size:16px;font-weight:700;font-family:inherit;
+  background:var(--black);color:var(--yellow);border:0;border-radius:10px;cursor:pointer}
+button[disabled]{opacity:.45;cursor:default}
+.msg{padding:14px 16px;border-radius:10px;font-size:14px;margin-bottom:18px;display:none}
+.msg.show{display:block}
+.msg.bad{background:#FDECEA;color:#8B2418;border-left:4px solid var(--err)}
+.msg.good{background:#E8F6EE;color:#12603A;border-left:4px solid var(--ok)}
+.done{text-align:center;padding:12px 0 0}
+.done .tick{width:64px;height:64px;border-radius:50%;background:var(--ok);color:#fff;
+  font-size:34px;line-height:64px;margin:0 auto 16px}
+.done h2{margin:0 0 6px;font-size:20px}
+.card{border:1px solid var(--line);border-radius:10px;padding:16px;margin:20px 0;text-align:left}
+.card div{display:flex;justify-content:space-between;padding:5px 0;font-size:14px}
+.card div span:first-child{color:var(--grey)}
+.ghost{background:#fff;color:var(--black);border:2px solid var(--black);margin-top:10px}
+footer{padding:0 24px 32px;text-align:center;font-size:12px;color:var(--grey)}
+.preview{background:#FFF8E1;border-bottom:1px solid var(--yellow);
+  padding:8px 16px;font-size:12px;text-align:center;display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="preview" id="preview">Preview mode &mdash; sample data, nothing is saved<br>
+    <span class="th">โหมดพรีวิว ข้อมูลสมมติ ไม่ได้บันทึกอะไรจริง</span></div>
+
+  <header>
+    <img src="assets/logo_black.png" alt="HAUS Academy">
+    <h1>Class Reminder Sign-up</h1>
+    <h1 class="th">ลงทะเบียนรับแจ้งเตือนคลาสเรียน</h1>
+    <p>Tomorrow's schedule, sent every day at 15:00</p>
+    <p class="th">รับตารางเรียนของพรุ่งนี้ทุกวัน เวลา 15:00 น.</p>
+  </header>
+
+  <main>
+    <form id="form">
+      <div class="msg" id="msg"></div>
+
+      <label for="code">Student code <span class="th">รหัสนักเรียน</span></label>
+      <p class="hint alert">The code our admin sent you, e.g. HA-7K3M<br>
+        <span class="th">รหัสที่แอดมินส่งให้ทางไลน์</span></p>
+      <input type="text" id="code" maxlength="8" placeholder="HA-____"
+             autocomplete="off" autocapitalize="characters" required>
+
+      <label style="margin-top:24px">You are the student's&hellip;
+        <span class="th">คุณเป็นอะไรกับนักเรียน</span></label>
+      <div class="roles" id="roles">
+        <label class="role"><input type="radio" name="rel" value="ผู้ปกครอง" checked>
+          <span>Parent <span class="th">ผู้ปกครอง</span></span></label>
+        <label class="role"><input type="radio" name="rel" value="นักเรียน">
+          <span>Student <span class="th">นักเรียน</span></span></label>
+        <label class="role"><input type="radio" name="rel" value="เลขา">
+          <span>Secretary / Assistant <span class="th">เลขา หรือผู้ช่วย</span></span></label>
+      </div>
+
+      <button type="submit" id="go">Sign up &middot; ลงทะเบียน</button>
+    </form>
+
+    <div class="done" id="done" style="display:none">
+      <div class="tick">✓</div>
+      <h2>You're all set</h2>
+      <h2 class="th">ลงทะเบียนเรียบร้อย</h2>
+      <p class="hint" id="doneNote"></p>
+      <div class="card" id="doneCard"></div>
+      <button class="ghost" id="again">Add another child &middot; ลงทะเบียนให้ลูกอีกคน</button>
+    </div>
+  </main>
+
+  <footer>
+    To stop receiving reminders, contact our admin<br>
+    <span class="th">ต้องการยกเลิกรับแจ้งเตือน ติดต่อแอดมินได้ที่</span><br>
+    Riverside 091-542-4694 &middot; King Square 096-659-6559
+  </footer>
+</div>
+
+<script>
+// ---------------------------------------------------------------- ตั้งค่า
+var LIFF_ID  = 'REPLACE-WITH-LIFF-ID';
+var ENDPOINT = 'REPLACE-WITH-APPS-SCRIPT-WEB-APP-URL';
+
+var profile = null;          // {userId, displayName} - ไลน์เป็นคนบอก
+var PREVIEW = false;         // เปิดนอกไลน์ = โหมดพรีวิว
+
+var $ = function (id) { return document.getElementById(id); };
+
+// ---------------------------------------------------------------- เริ่มต้น
+(function init() {
+  if (typeof liff === 'undefined' || LIFF_ID.indexOf('REPLACE') === 0) {
+    return startPreview();
+  }
+  liff.init({ liffId: LIFF_ID }).then(function () {
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    return liff.getProfile().then(function (p) { profile = p; });
+  }).catch(startPreview);
+})();
+
+function startPreview() {
+  PREVIEW = true;
+  profile = { userId: 'Upreview0000', displayName: 'คุณแม่ (ตัวอย่าง)' };
+  $('preview').style.display = 'block';
+}
+
+// ---------------------------------------------------------------- ฟอร์ม
+// จัดรูปแบบรหัสระหว่างพิมพ์ ผู้ปกครองพิมพ์แบบไหนก็ได้ เดี๋ยวจัดให้เอง
+$('code').addEventListener('input', function (e) {
+  var body = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (body.indexOf('HA') === 0) body = body.substring(2);
+  e.target.value = body ? 'HA-' + body.substring(0, 4) : '';
+});
+
+$('roles').addEventListener('change', function () {
+  [].forEach.call(document.querySelectorAll('.role'), function (el) {
+    el.classList.toggle('on', el.querySelector('input').checked);
+  });
+});
+
+$('form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var code = $('code').value.trim();
+  if (code.length < 7) {
+    return say('bad', 'Please enter all 4 characters of the code.',
+                      'กรุณากรอกรหัสให้ครบ 4 ตัวค่ะ');
+  }
+
+  $('go').disabled = true;
+  $('go').textContent = 'Signing up…';
+
+  send({
+    code: code,
+    relation: document.querySelector('input[name=rel]:checked').value,
+    userId: profile.userId,
+    displayName: profile.displayName
+  }).then(onResult).catch(function () {
+    reset();
+    say('bad', 'Could not connect. Please try again.',
+               'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้งนะคะ');
+  });
+});
+
+function send(payload) {
+  if (PREVIEW) {
+    // พรีวิว - จำลองคำตอบจากเซิร์ฟเวอร์ ไม่ได้ส่งอะไรจริง
+    return new Promise(function (res) {
+      setTimeout(function () {
+        res(payload.code === 'HA-0000'
+          ? { ok: false, reason: 'not_found' }
+          : { ok: true, nickname: 'Alice', fullname: 'Alice Mingsittichai',
+              relation: payload.relation });
+      }, 600);
+    });
+  }
+  return fetch(ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },  // เลี่ยง preflight
+    body: JSON.stringify(payload)
+  }).then(function (r) { return r.json(); });
+}
+
+function onResult(res) {
+  reset();
+  if (res.ok) { return showDone(res); }
+
+  if (res.reason === 'not_found') {
+    say('bad', 'We could not find that code. Please check it, or message our admin.',
+               'ไม่พบรหัสนี้ค่ะ ลองตรวจดูอีกครั้ง หรือทักแอดมินได้เลย');
+  } else if (res.reason === 'blocked') {
+    var mins = res.minutes || 60;
+    say('bad', 'Too many wrong codes. Please try again in ' + mins +
+               ' minutes, or call our admin on 096-659-6559.',
+               'กรอกรหัสผิดหลายครั้ง กรุณารออีก ' + mins +
+               ' นาที หรือติดต่อแอดมิน 096-659-6559 ค่ะ');
+  } else if (res.reason === 'duplicate') {
+    say('good', 'You are already signed up. Nothing else to do.',
+                'ลงทะเบียนไว้อยู่แล้วค่ะ ไม่ต้องทำอะไรเพิ่ม');
+  } else {
+    say('bad', 'Something went wrong. Please contact our admin.',
+               'เกิดข้อผิดพลาด กรุณาติดต่อแอดมินค่ะ');
+  }
+}
+
+function showDone(res) {
+  $('form').style.display = 'none';
+  $('done').style.display = 'block';
+  $('doneNote').innerHTML = 'Starting tomorrow, we send it at 15:00 on days with class.' +
+    '<br><span class="th">เริ่มพรุ่งนี้ ถ้ามีคลาสเราจะส่งให้ตอน 15:00 น.</span>';
+  $('doneCard').innerHTML =
+    row('Student <span class="th">นักเรียน</span>',
+        res.nickname + (res.fullname ? ' · ' + res.fullname : '')) +
+    row('You are <span class="th">คุณคือ</span>', res.relation) +
+    row('Sent to <span class="th">ส่งเข้าไลน์</span>', profile.displayName);
+}
+
+function row(k, v) {
+  return '<div><span>' + k + '</span><span>' + v + '</span></div>';
+}
+
+$('again').addEventListener('click', function () {
+  $('done').style.display = 'none';
+  $('form').style.display = 'block';
+  $('code').value = '';
+  $('msg').className = 'msg';
+  $('code').focus();
+});
+
+function say(kind, en, th) {
+  var m = $('msg');
+  m.innerHTML = en + (th ? '<br><span class="th">' + th + '</span>' : '');
+  m.className = 'msg show ' + kind;
+}
+
+function reset() {
+  $('go').disabled = false;
+  $('go').innerHTML = 'Sign up &middot; ลงทะเบียน';
+}
+
+// ให้ปุ่มแรกมีกรอบตั้งแต่เปิดหน้า
+document.querySelector('.role').classList.add('on');
+</script>
+</body>
+</html>
