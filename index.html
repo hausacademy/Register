@@ -97,11 +97,15 @@ footer{padding:0 24px 32px;text-align:center;font-size:12px;color:var(--grey)}
       <label style="margin-top:24px">You are the student's&hellip;
         <span class="th">คุณเป็นอะไรกับนักเรียน</span></label>
       <div class="roles" id="roles">
-        <label class="role"><input type="radio" name="rel" value="ผู้ปกครอง" checked>
-          <span>Parent <span class="th">ผู้ปกครอง</span></span></label>
+        <label class="role"><input type="radio" name="rel" value="คุณแม่">
+          <span>Mother <span class="th">คุณแม่</span></span></label>
+        <label class="role"><input type="radio" name="rel" value="คุณพ่อ">
+          <span>Father <span class="th">คุณพ่อ</span></span></label>
         <label class="role"><input type="radio" name="rel" value="นักเรียน">
           <span>Student <span class="th">นักเรียน</span></span></label>
-        <label class="role"><input type="radio" name="rel" value="เลขา">
+        <label class="role"><input type="radio" name="rel" value="ญาติ หรือผู้ดูแล">
+          <span>Relative / guardian <span class="th">ญาติ หรือผู้ดูแล</span></span></label>
+        <label class="role"><input type="radio" name="rel" value="เลขา หรือผู้ช่วย">
           <span>Secretary / Assistant <span class="th">เลขา หรือผู้ช่วย</span></span></label>
       </div>
 
@@ -174,12 +178,18 @@ $('form').addEventListener('submit', function (e) {
                       'กรุณากรอกรหัสให้ครบ 4 ตัวค่ะ');
   }
 
+  var picked = document.querySelector('input[name=rel]:checked');
+  if (!picked) {
+    return say('bad', 'Please tell us who you are.',
+                      'กรุณาเลือกว่าเป็นอะไรกับน้องด้วยนะคะ');
+  }
+
   $('go').disabled = true;
   $('go').textContent = 'Signing up…';
 
   send({
     code: code,
-    relation: document.querySelector('input[name=rel]:checked').value,
+    relation: picked.value,
     userId: profile.userId,
     displayName: profile.displayName
   }).then(onResult).catch(function () {
@@ -265,8 +275,9 @@ function reset() {
   $('go').innerHTML = 'Sign up &middot; ลงทะเบียน';
 }
 
-// ให้ปุ่มแรกมีกรอบตั้งแต่เปิดหน้า
-document.querySelector('.role').classList.add('on');
+// ตั้งใจไม่ติ๊กตัวเลือกไหนไว้ล่วงหน้า
+// ถ้าตั้งค่าเริ่มต้นเป็น 'คุณแม่' คนส่วนใหญ่จะกดผ่านโดยไม่อ่าน
+// แล้วเราจะได้ข้อมูลว่าเป็นแม่ทั้งหมด ทั้งที่จริงไม่ใช่
 </script>
 </body>
 </html>
