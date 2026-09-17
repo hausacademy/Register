@@ -35,6 +35,7 @@ header p.th{margin-top:1px;font-weight:500;opacity:.8}
 
 /* บรรทัดภาษาไทย - เล็กกว่าอังกฤษหนึ่งขั้น อ่านคู่กันได้ไม่แย่งกันเด่น */
 .th{font-weight:400;opacity:.72;font-size:.86em}
+.errdetail{margin-top:6px;font-size:11px;opacity:.55;font-family:ui-monospace,Menlo,Consolas,monospace}
 label .th{display:inline-block;font-weight:400}
 .role .th{display:block;font-size:12.5px;margin-top:-2px}
 main{padding:24px}
@@ -203,15 +204,29 @@ $('form').addEventListener('submit', function (e) {
   $('go').disabled = true;
   $('go').textContent = 'Signing up…';
 
-  send({
+  var payload = {
     code: code,
     relation: picked.value,
     userId: profile.userId,
     displayName: profile.displayName
-  }).then(onResult).catch(function () {
+  };
+
+  // ⚠️ ส่งซ้ำเองอีก 1 ครั้งก่อนบอกว่าเชื่อมต่อไม่ได้ (17/09/2026)
+  //    KruJoy เจอ "Could not connect" 2 ครั้ง กดซ้ำทันทีผ่านทุกครั้ง
+  //    และใน Apps Script > Executions ไม่มีบันทึกคำขอครั้งที่พังเลย = เน็ตสะดุดก่อนถึงระบบ
+  //    มือถือเจอบ่อยตอนสลับแอปแล้วกลับมาที่ฟอร์ม เช่น ออกไปก็อปรหัสในแชท
+  //    ส่งซ้ำปลอดภัย: ตัวรับเช็กก่อนเขียนทุกครั้งว่าคนนี้ลงรหัสนี้ไว้แล้วหรือยัง
+  send(payload).catch(function () {
+    return wait(1200).then(function () { return send(payload); });
+  }).then(onResult).catch(function (err) {
     reset();
     say('bad', 'Could not connect. Please try again.',
                'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้งนะคะ');
+    // ตัวเล็ก ๆ ท้ายข้อความ - ดูจากภาพหน้าจอได้ว่าเน็ตหลุด หรือระบบตอบกลับผิดรูปแบบ
+    var d = document.createElement('div');
+    d.className = 'errdetail';
+    d.textContent = String((err && err.message) || err || '');
+    $('msg').appendChild(d);
   });
 });
 
@@ -286,6 +301,10 @@ $('again').addEventListener('click', function () {
   $('msg').className = 'msg';
   $('code').focus();
 });
+
+function wait(ms) {
+  return new Promise(function (done) { setTimeout(done, ms); });
+}
 
 function say(kind, en, th) {
   var m = $('msg');
