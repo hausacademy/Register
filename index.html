@@ -231,6 +231,9 @@ function onResult(res) {
                ' minutes, or call our admin on 096-659-6559.',
                'กรอกรหัสผิดหลายครั้ง กรุณารออีก ' + mins +
                ' นาที หรือติดต่อแอดมิน 096-659-6559 ค่ะ');
+  } else if (res.reason === 'not_friend') {
+    say('bad', 'Please add HAUS Academy as a friend on LINE first, then open this link again.',
+               'กรุณาเพิ่มเพื่อน HAUS Academy ในไลน์ก่อน แล้วกดลิงก์นี้อีกครั้งค่ะ');
   } else if (res.reason === 'duplicate') {
     say('good', 'You are already signed up. Nothing else to do.',
                 'ลงทะเบียนไว้อยู่แล้วค่ะ ไม่ต้องทำอะไรเพิ่ม');
