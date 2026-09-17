@@ -89,7 +89,7 @@ footer{padding:0 24px 32px;text-align:center;font-size:12px;color:var(--grey)}
       <div class="msg" id="msg"></div>
 
       <label for="code">Student code <span class="th">รหัสนักเรียน</span></label>
-      <p class="hint alert">The code our admin sent you, e.g. HA-7K3M<br>
+      <p class="hint alert">The code our admin sent you on LINE<br>
         <span class="th">รหัสที่แอดมินส่งให้ทางไลน์</span></p>
       <input type="text" id="code" maxlength="12" placeholder="HA-____"
              autocomplete="off" autocapitalize="characters" required>
@@ -239,8 +239,12 @@ function onResult(res) {
   if (res.ok) { return showDone(res); }
 
   if (res.reason === 'not_found') {
-    say('bad', 'We could not find that code. Please check it, or message our admin.',
-               'ไม่พบรหัสนี้ค่ะ ลองตรวจดูอีกครั้ง หรือทักแอดมินได้เลย');
+    // KruJoy 17/09/2026: ผู้ปกครองอ่าน 6 เป็น G จริง (HA-D6NR -> HA-DGNR สองรอบ)
+    // ตัวอักษรในรหัสยังมีคู่ที่หน้าตาคล้ายกัน เปลี่ยนไม่ได้แล้วเพราะแจกไปแล้ว -> บอกให้ดูตรงนี้แทน
+    say('bad', 'We could not find that code. Please check letters that look alike, ' +
+               'such as 6 and G, 5 and S, 8 and B — or message our admin.',
+               'ไม่พบรหัสนี้ค่ะ ลองตรวจตัวที่หน้าตาคล้ายกันอีกครั้ง ' +
+               'เช่น 6 กับ G, 5 กับ S, 8 กับ B หรือทักแอดมินได้เลย');
   } else if (res.reason === 'blocked') {
     var mins = res.minutes || 60;
     say('bad', 'Too many wrong codes. Please try again in ' + mins +
