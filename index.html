@@ -91,7 +91,7 @@ footer{padding:0 24px 32px;text-align:center;font-size:12px;color:var(--grey)}
       <label for="code">Student code <span class="th">รหัสนักเรียน</span></label>
       <p class="hint alert">The code our admin sent you, e.g. HA-7K3M<br>
         <span class="th">รหัสที่แอดมินส่งให้ทางไลน์</span></p>
-      <input type="text" id="code" maxlength="8" placeholder="HA-____"
+      <input type="text" id="code" maxlength="12" placeholder="HA-____"
              autocomplete="off" autocapitalize="characters" required>
 
       <label style="margin-top:24px">You are the student's&hellip;
@@ -157,11 +157,27 @@ function startPreview() {
 }
 
 // ---------------------------------------------------------------- ฟอร์ม
-// จัดรูปแบบรหัสระหว่างพิมพ์ ผู้ปกครองพิมพ์แบบไหนก็ได้ เดี๋ยวจัดให้เอง
+// รับรหัสได้ 2 แบบ: HA ตามด้วย 4 ตัว หรือ 4 ตัวล้วน - ขีด ช่องว่าง ตัวเล็กใหญ่ไม่มีผล
+//
+// ⚠️ ห้ามเติม HA- ให้ระหว่างพิมพ์ (บั๊กที่ผู้ปกครองเจอจริง 16-17/09/2026)
+//    ตัวเก่าเติม HA- ทุกครั้งที่กดแป้น พอพิมพ์ H ตัวแรก ช่องกลายเป็น HA-H ทันที
+//    แล้ว H กับ A ที่พิมพ์ต่อกลายเป็นส่วนหนึ่งของรหัส: พิมพ์ HA-WYQT ได้ HA-HAWY
+//    คนที่ก็อปวางผ่านหมด คนที่พิมพ์ HA- เองไม่ผ่านทุกคน -> not_found
+//    ตอนนี้ระหว่างพิมพ์แค่ทำเป็นตัวใหญ่ ค่อยจัดรูปแบบตอนพิมพ์เสร็จกับตอนกดส่ง
+function cleanCode(text) {
+  var raw = String(text || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (raw.length === 6 && raw.indexOf('HA') === 0) raw = raw.substring(2);
+  return raw.length === 4 ? 'HA-' + raw : '';
+}
+
 $('code').addEventListener('input', function (e) {
-  var body = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (body.indexOf('HA') === 0) body = body.substring(2);
-  e.target.value = body ? 'HA-' + body.substring(0, 4) : '';
+  var up = e.target.value.toUpperCase();
+  if (up !== e.target.value) e.target.value = up;
+});
+
+$('code').addEventListener('blur', function (e) {
+  var c = cleanCode(e.target.value);
+  if (c) e.target.value = c;
 });
 
 $('roles').addEventListener('change', function () {
@@ -172,8 +188,8 @@ $('roles').addEventListener('change', function () {
 
 $('form').addEventListener('submit', function (e) {
   e.preventDefault();
-  var code = $('code').value.trim();
-  if (code.length < 7) {
+  var code = cleanCode($('code').value);
+  if (!code) {
     return say('bad', 'Please enter all 4 characters of the code.',
                       'กรุณากรอกรหัสให้ครบ 4 ตัวค่ะ');
   }
